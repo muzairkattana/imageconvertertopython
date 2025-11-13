@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <title>Image  Python Code Converter</title>
-  <link rel="icon" href="favicon.ico" type="image/x-icon" />
+  <!-- Website icon: put your icon file in the same folder (e.g., icon.ico) and update the href if needed -->
+  <link rel="icon" href="icon.ico" type="image/x-icon" />
   <style>
     * { box-sizing: border-box; }
     body {
@@ -89,6 +90,15 @@
       color: #e5e7eb;
       font-size: 0.85rem;
     }
+    select {
+      width: 100%;
+      padding: 4px 6px;
+      border-radius: 6px;
+      border: 1px solid #374151;
+      background: #020617;
+      color: #e5e7eb;
+      font-size: 0.85rem;
+    }
     .modes {
       display: flex;
       flex-direction: column;
@@ -165,6 +175,7 @@
   <div class="container">
     <div>
       <div class="header">
+        <!-- Website logo: replace logo.png with your own logo file name if you like -->
         <img src="logo.png" alt="Logo" class="logo" />
         <div>
           <h1>Image  Python Code Converter</h1>
@@ -210,6 +221,37 @@
         Paste code into a <code>.py</code> file, install <code>matplotlib</code>, then run:
         <code>python your_file.py</code>.
       </div>
+
+      <div class="note">
+        <span class="badge">Customize for your own site</span>
+        <ol style="padding-left:16px;margin:4px 0;">
+          <li>Put your logo image in this folder and update <code>src="logo.png"</code> above.</li>
+          <li>Put your icon file in this folder and update the <code>href="icon.ico"</code> in the <code>&lt;head&gt;</code>.</li>
+          <li>Optionally change the page title <code>&lt;title&gt;Image  Python Code Converter&lt;/title&gt;</code>.</li>
+        </ol>
+      </div>
+
+      <div class="panel" style="margin-top:10px;">
+        <div class="field">
+          <label for="icon-mode">Image  Icon converter</label>
+          <select id="icon-mode">
+            <option value="img_to_icon">Image  Icon (PNG favicon)</option>
+            <option value="icon_to_img">Icon  Image (PNG)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="icon-file">File (image or .ico)</label>
+          <input id="icon-file" type="file" accept="image/*,.ico" />
+        </div>
+        <div class="field">
+          <label for="icon-size">Icon size (pixels)</label>
+          <input id="icon-size" type="number" min="16" max="512" value="256" />
+          <span class="note">Used when converting image  icon. PNG output keeps quality.</span>
+        </div>
+        <button id="icon-convert-btn">Convert icon/image</button>
+        <button id="icon-download-btn" class="secondary-btn" disabled>Download PNG</button>
+        <div class="status" id="icon-status"></div>
+      </div>
     </div>
 
     <div>
@@ -233,7 +275,16 @@
     const maxSizeInput = document.getElementById('max-size');
     const canvas = document.getElementById('hidden-canvas');
 
+    const iconFileInput = document.getElementById('icon-file');
+    const iconModeSelect = document.getElementById('icon-mode');
+    const iconSizeInput = document.getElementById('icon-size');
+    const iconConvertBtn = document.getElementById('icon-convert-btn');
+    const iconDownloadBtn = document.getElementById('icon-download-btn');
+    const iconStatusEl = document.getElementById('icon-status');
+
     let currentFilenameBase = 'image_code';
+    let iconDownloadBlob = null;
+    let iconDownloadName = 'icon.png';
 
     function setStatus(msg) {
       statusEl.textContent = msg || '';
@@ -268,6 +319,57 @@
             ctx.clearRect(0, 0, targetW, targetH);
             ctx.drawImage(img, 0, 0, targetW, targetH);
             resolve({ width: targetW, height: targetH, ctx });
+          };
+          img.onerror = err => reject(err);
+          img.src = e.target.result;
+        };
+        reader.onerror = err => reject(err);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function loadImageToCanvasSquare(file, size) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const img = new Image();
+          img.onload = () => {
+            const scale = Math.min(size / img.width, size / img.height, 1);
+            const targetW = Math.round(img.width * scale);
+            const targetH = Math.round(img.height * scale);
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, size, size);
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            const offsetX = Math.round((size - targetW) / 2);
+            const offsetY = Math.round((size - targetH) / 2);
+            ctx.drawImage(img, offsetX, offsetY, targetW, targetH);
+            resolve({ width: size, height: size, ctx });
+          };
+          img.onerror = err => reject(err);
+          img.src = e.target.result;
+        };
+        reader.onerror = err => reject(err);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function loadImageToCanvasOriginal(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const img = new Image();
+          img.onload = () => {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, img.width, img.height);
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(img, 0, 0);
+            resolve({ width: img.width, height: img.height, ctx });
           };
           img.onerror = err => reject(err);
           img.src = e.target.result;
@@ -427,6 +529,62 @@ if __name__ == "__main__":
       const a = document.createElement('a');
       a.href = url;
       a.download = currentFilenameBase + '.py';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    iconConvertBtn.addEventListener('click', async () => {
+      const file = iconFileInput.files[0];
+      if (!file) {
+        iconStatusEl.textContent = 'Please select an image or .ico file first.';
+        return;
+      }
+      const mode = iconModeSelect.value;
+      let size = parseInt(iconSizeInput.value, 10);
+      if (!Number.isFinite(size) || size <= 0) {
+        size = 256;
+      }
+
+      iconConvertBtn.disabled = true;
+      iconDownloadBtn.disabled = true;
+      iconStatusEl.textContent = 'Processing icon/image…';
+      iconDownloadBlob = null;
+
+      try {
+        if (mode === 'img_to_icon') {
+          await loadImageToCanvasSquare(file, size);
+          iconDownloadName = (file.name.replace(/\.[^.]+$/, '') || 'icon') + '-icon.png';
+        } else {
+          await loadImageToCanvasOriginal(file);
+          iconDownloadName = (file.name.replace(/\.[^.]+$/, '') || 'image') + '-from-icon.png';
+        }
+
+        iconDownloadBlob = await new Promise((resolve, reject) => {
+          canvas.toBlob(blob => {
+            if (!blob) {
+              reject(new Error('Failed to create PNG blob'));
+            } else {
+              resolve(blob);
+            }
+          }, 'image/png');
+        });
+
+        iconStatusEl.textContent = 'Conversion ready. Click "Download PNG".';
+        iconDownloadBtn.disabled = false;
+      } catch (err) {
+        console.error(err);
+        iconStatusEl.textContent = 'Failed to convert icon/image. Check console for details.';
+      } finally {
+        iconConvertBtn.disabled = false;
+      }
+    });
+
+    iconDownloadBtn.addEventListener('click', () => {
+      if (!iconDownloadBlob) return;
+      const url = URL.createObjectURL(iconDownloadBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = iconDownloadName;
       a.click();
       URL.revokeObjectURL(url);
     });

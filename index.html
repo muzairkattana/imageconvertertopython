@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Image → Python Code Converter</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f172a;
+      color: #e5e7eb;
+      display: flex;
+      min-height: 100vh;
+      justify-content: center;
+      align-items: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 960px;
+      background: #020617;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 20px 40px rgba(15,23,42,0.7);
+      border: 1px solid #1f2937;
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr);
+      gap: 20px;
+    }
+    @media (max-width: 800px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 4px;
+    }
+    .subtitle {
+      font-size: 0.9rem;
+      color: #9ca3af;
+      margin-bottom: 16px;
+    }
+    label {
+      font-size: 0.85rem;
+      color: #9ca3af;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .panel {
+      background: #020617;
+      border-radius: 8px;
+      padding: 12px 14px 14px;
+      border: 1px solid #111827;
+    }
+    .field {
+      margin-bottom: 10px;
+    }
+    input[type="file"] {
+      width: 100%;
+      padding: 6px;
+      border-radius: 6px;
+      border: 1px dashed #374151;
+      background: #020617;
+      color: #e5e7eb;
+      font-size: 0.85rem;
+    }
+    input[type="number"] {
+      width: 80px;
+      padding: 4px 6px;
+      border-radius: 6px;
+      border: 1px solid #374151;
+      background: #020617;
+      color: #e5e7eb;
+      font-size: 0.85rem;
+    }
+    .modes {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      font-size: 0.85rem;
+    }
+    .modes label {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      margin-bottom: 0;
+    }
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 7px 16px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(135deg, #22c55e, #22d3ee);
+      color: #022c22;
+      font-weight: 600;
+      margin-right: 8px;
+      margin-top: 6px;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .secondary-btn {
+      background: transparent;
+      border: 1px solid #374151;
+      color: #e5e7eb;
+    }
+    textarea {
+      width: 100%;
+      height: 260px;
+      border-radius: 8px;
+      border: 1px solid #111827;
+      background: #020617;
+      color: #e5e7eb;
+      padding: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.78rem;
+      resize: vertical;
+      white-space: pre;
+    }
+    .status {
+      font-size: 0.8rem;
+      color: #9ca3af;
+      margin-top: 6px;
+      min-height: 18px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #0f172a;
+      color: #9ca3af;
+      font-size: 0.7rem;
+      margin-right: 4px;
+      border: 1px solid #1f2937;
+    }
+    .note {
+      font-size: 0.78rem;
+      color: #6b7280;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div>
+      <h1>Image → Python Code Converter</h1>
+      <div class="subtitle">
+        Upload an image and get a ready‑to‑run Python script that draws it with Matplotlib.
+      </div>
+
+      <div class="panel">
+        <div class="field">
+          <label for="file-input">Image file (PNG, JPG, etc.)</label>
+          <input id="file-input" type="file" accept="image/*" />
+        </div>
+
+        <div class="field">
+          <label>Output mode</label>
+          <div class="modes">
+            <label>
+              <input type="radio" name="mode" value="py_sketch" checked />
+              Python: B/W sketch (edges)
+            </label>
+            <label>
+              <input type="radio" name="mode" value="py_color" />
+              Python: color pixels
+            </label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="max-size">Max size (longest side, pixels)</label>
+          <input id="max-size" type="number" min="32" max="512" value="160" />
+          <span class="note">Higher = more detail, larger code.</span>
+        </div>
+
+        <button id="convert-btn">Convert to Python</button>
+        <button id="download-btn" class="secondary-btn" disabled>Download .py</button>
+
+        <div class="status" id="status"></div>
+      </div>
+
+      <div class="note">
+        <span class="badge">How to use</span>
+        Paste code into a <code>.py</code> file, install <code>matplotlib</code>, then run:
+        <code>python your_file.py</code>.
+      </div>
+    </div>
+
+    <div>
+      <label>Generated Python code</label>
+      <textarea id="output" placeholder="# Your Python code will appear here…" readonly></textarea>
+    </div>
+  </div>
+
+  <footer style="position:fixed;bottom:10px;left:0;right:0;text-align:center;font-size:0.75rem;color:#6b7280;">
+    Built by <span style="color:#e5e7eb;font-weight:600;">Uzairaistudio</span>
+  </footer>
+
+  <canvas id="hidden-canvas" style="display:none;"></canvas>
+
+  <script>
+    const fileInput = document.getElementById('file-input');
+    const convertBtn = document.getElementById('convert-btn');
+    const downloadBtn = document.getElementById('download-btn');
+    const output = document.getElementById('output');
+    const statusEl = document.getElementById('status');
+    const maxSizeInput = document.getElementById('max-size');
+    const canvas = document.getElementById('hidden-canvas');
+
+    let currentFilenameBase = 'image_code';
+
+    function setStatus(msg) {
+      statusEl.textContent = msg || '';
+    }
+
+    function getSelectedMode() {
+      const radios = document.querySelectorAll('input[name="mode"]');
+      for (const r of radios) {
+        if (r.checked) return r.value;
+      }
+      return 'py_sketch';
+    }
+
+    function loadImageToCanvas(file, maxSize) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const img = new Image();
+          img.onload = () => {
+            const ratio = img.width / img.height;
+            let targetW, targetH;
+            if (img.width >= img.height) {
+              targetW = maxSize;
+              targetH = Math.round(maxSize / ratio);
+            } else {
+              targetH = maxSize;
+              targetW = Math.round(maxSize * ratio);
+            }
+            canvas.width = targetW;
+            canvas.height = targetH;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, targetW, targetH);
+            ctx.drawImage(img, 0, 0, targetW, targetH);
+            resolve({ width: targetW, height: targetH, ctx });
+          };
+          img.onerror = err => reject(err);
+          img.src = e.target.result;
+        };
+        reader.onerror = err => reject(err);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function generateSketchPoints(imageData, width, height) {
+      const data = imageData.data;
+      const gray = new Float32Array(width * height);
+
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const i = (y * width + x) * 4;
+          const r = data[i], g = data[i+1], b = data[i+2];
+          const v = 0.299 * r + 0.587 * g + 0.114 * b;
+          gray[y * width + x] = v;
+        }
+      }
+
+      const points = [];
+      const threshold = 20;
+
+      for (let y = 0; y < height - 1; y++) {
+        for (let x = 0; x < width - 1; x++) {
+          const idx = y * width + x;
+          const v = gray[idx];
+          const vr = gray[idx + 1];
+          const vb = gray[idx + width];
+          const diff = Math.max(Math.abs(v - vr), Math.abs(v - vb));
+          if (diff > threshold) {
+            points.push([x, y]);
+          }
+        }
+      }
+      return points;
+    }
+
+    function generateColorPoints(imageData, width, height) {
+      const data = imageData.data;
+      const points = [];
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const i = (y * width + x) * 4;
+          const r = data[i], g = data[i+1], b = data[i+2];
+          points.push([x, y, [r, g, b]]);
+        }
+      }
+      return points;
+    }
+
+    function createPythonSketchCode(width, height, points) {
+      const pointsLiteral = JSON.stringify(points);
+      return `import matplotlib.pyplot as plt
+
+WIDTH, HEIGHT = ${width}, ${height}
+# Each point is [x, y]
+POINTS = ${pointsLiteral}
+
+
+def main():
+    xs = [p[0] for p in POINTS]
+    ys = [HEIGHT - p[1] for p in POINTS]  # flip Y so image isn't upside-down
+
+    plt.figure(figsize=(WIDTH / 80, HEIGHT / 80), facecolor="white")
+    plt.scatter(xs, ys, s=1, c="black", marker=".", linewidths=0)
+    plt.axis("off")
+    plt.gca().set_aspect("equal", adjustable="box")
+    plt.tight_layout()
+    plt.show()
+
+
+if __name__ == "__main__":
+    main()
+`;
+    }
+
+    function createPythonColorCode(width, height, points) {
+      const pointsLiteral = JSON.stringify(points);
+      return `import matplotlib.pyplot as plt
+
+WIDTH, HEIGHT = ${width}, ${height}
+# Each point is [x, y, [r, g, b]]
+POINTS = ${pointsLiteral}
+
+
+def main():
+    xs = [p[0] for p in POINTS]
+    ys = [HEIGHT - p[1] for p in POINTS]  # flip Y so image isn't upside-down
+    colors = [
+        (p[2][0] / 255.0, p[2][1] / 255.0, p[2][2] / 255.0)
+        for p in POINTS
+    ]
+
+    plt.figure(figsize=(WIDTH / 50, HEIGHT / 50), facecolor="white")
+    plt.scatter(xs, ys, s=8, c=colors, marker="s", linewidths=0)
+    plt.axis("off")
+    plt.gca().set_aspect("equal", adjustable="box")
+    plt.tight_layout()
+    plt.show()
+
+
+if __name__ == "__main__":
+    main()
+`;
+    }
+
+    convertBtn.addEventListener('click', async () => {
+      const file = fileInput.files[0];
+      if (!file) {
+        setStatus('Please select an image file first.');
+        return;
+      }
+      let maxSize = parseInt(maxSizeInput.value, 10);
+      if (!Number.isFinite(maxSize) || maxSize <= 0) {
+        setStatus('Max size must be a positive number.');
+        return;
+      }
+
+      convertBtn.disabled = true;
+      downloadBtn.disabled = true;
+      setStatus('Processing image…');
+
+      currentFilenameBase = file.name.replace(/\.[^.]+$/, '') || 'image_code';
+
+      try {
+        const { width, height, ctx } = await loadImageToCanvas(file, maxSize);
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const mode = getSelectedMode();
+
+        let pyCode;
+        if (mode === 'py_sketch') {
+          const points = generateSketchPoints(imageData, width, height);
+          pyCode = createPythonSketchCode(width, height, points);
+          setStatus(`Generated sketch code with ${points.length} edge points.`);
+        } else {
+          const points = generateColorPoints(imageData, width, height);
+          pyCode = createPythonColorCode(width, height, points);
+          setStatus(`Generated color code with ${points.length} pixels.`);
+        }
+
+        output.value = pyCode;
+        downloadBtn.disabled = false;
+      } catch (err) {
+        console.error(err);
+        setStatus('Failed to process image. Check the console for details.');
+      } finally {
+        convertBtn.disabled = false;
+      }
+    });
+
+    downloadBtn.addEventListener('click', () => {
+      const blob = new Blob([output.value], { type: 'text/x-python' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = currentFilenameBase + '.py';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  </script>
+</body>
+</html>
